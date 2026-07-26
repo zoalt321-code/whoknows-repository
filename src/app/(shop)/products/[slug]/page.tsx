@@ -7,6 +7,7 @@ import { ProductGallery } from '@/components/product/ProductGallery';
 import { ProductInfo } from '@/components/product/ProductInfo';
 import { ProductOptions } from '@/components/product/ProductOptions';
 import { SimilarProducts } from '@/components/product/SimilarProducts';
+import { ReviewsSection } from '@/components/product/ReviewsSection';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -96,6 +97,9 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             <ProductOptions product={product} onAddToWishlist={handleAddToWishlist} onBuyClick={handleBuyClick} />
           </div>
         </div>
+
+        {/* Reviews Section */}
+        <ReviewsSection productId={product.id} />
 
         {/* Similar Products */}
         {allProducts.length > 0 && <SimilarProducts products={allProducts} currentProductId={product.id} />}
