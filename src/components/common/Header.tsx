@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { MAIN_NAV_ITEMS } from '@/lib/constants';
+import { AuthButtons } from './AuthButtons';
 
 export function Header() {
   return (
@@ -27,20 +28,7 @@ export function Header() {
           </div>
 
           {/* Auth Buttons */}
-          <div className="flex items-center gap-4">
-            <Link
-              href="/login"
-              className="text-sm font-medium hover:text-accent transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-dark transition-colors"
-            >
-              Sign Up
-            </Link>
-          </div>
+          <AuthButtons />
         </nav>
       </div>
     </header>
