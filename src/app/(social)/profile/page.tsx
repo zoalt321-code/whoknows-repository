@@ -6,6 +6,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { canChangeUsername } from '@/lib/utils';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -28,6 +29,11 @@ function ProfileContent() {
     bio: '',
   });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [usernameChangeInfo, setUsernameChangeInfo] = useState<{
+    canChange: boolean;
+    daysRemaining: number;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -36,6 +42,7 @@ function ProfileContent() {
         username: profile.username || '',
         bio: profile.bio || '',
       });
+      setUsernameChangeInfo(canChangeUsername(profile.last_username_change));
     }
   }, [profile]);
 
@@ -51,13 +58,52 @@ function ProfileContent() {
     e.preventDefault();
     if (!authUser?.id) return;
 
-    await updateProfile(authUser.id, {
+    // Check if username was changed
+    const usernameChanged = formData.username !== profile?.username;
+
+    if (usernameChanged && !usernameChangeInfo?.canChange) {
+      alert(`You can only change your username once every 31 days. ${usernameChangeInfo?.message}`);
+      return;
+    }
+
+    // If username is being changed, validate it
+    if (usernameChanged) {
+      if (!formData.username || formData.username.length < 3) {
+        alert('Username must be at least 3 characters');
+        return;
+      }
+
+      if (!/^[a-z0-9_]+$/.test(formData.username)) {
+        alert('Username can only contain lowercase letters, numbers, and underscores');
+        return;
+      }
+
+      // Check if new username is already taken
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', formData.username)
+        .single();
+
+      if (existingUser && existingUser.id !== authUser.id) {
+        alert('Username is already taken');
+        return;
+      }
+    }
+
+    const updates: any = {
       display_name: formData.display_name,
-      username: formData.username,
       bio: formData.bio,
       updated_at: new Date().toISOString(),
-    });
+    };
 
+    // Only update username if it changed and is allowed
+    if (usernameChanged) {
+      updates.username = formData.username;
+      updates.last_username_change = new Date().toISOString();
+    }
+
+    await updateProfile(authUser.id, updates);
     setIsEditing(false);
   };
 
@@ -203,10 +249,14 @@ function ProfileContent() {
                   value={formData.username}
                   onChange={handleInputChange}
                   placeholder="Your unique username"
-                  disabled
-                  className="w-full px-4 py-2 border border-neutral rounded-lg focus:outline-none focus:ring-2 focus:ring-accent bg-gray-100 cursor-not-allowed"
+                  disabled={!usernameChangeInfo?.canChange}
+                  className="w-full px-4 py-2 border border-neutral rounded-lg focus:outline-none focus:ring-2 focus:ring-accent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {usernameChangeInfo?.canChange
+                    ? 'Lowercase letters, numbers, underscores only. Can change once every 31 days.'
+                    : usernameChangeInfo?.message}
+                </p>
               </div>
 
               {/* Bio */}
@@ -223,7 +273,7 @@ function ProfileContent() {
                   rows={4}
                   className="w-full px-4 py-2 border border-neutral rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                 />
-                <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/160 characters</p>
+                <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
               </div>
 
               {/* Buttons */}
